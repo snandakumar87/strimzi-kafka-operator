@@ -5,6 +5,7 @@
 package io.strimzi.systemtest;
 
 import io.fabric8.kubernetes.api.model.Event;
+import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.batch.Job;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -43,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import static io.strimzi.systemtest.k8s.Events.Created;
 import static io.strimzi.systemtest.k8s.Events.Failed;
@@ -69,6 +71,7 @@ import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.valid4j.matchers.jsonpath.JsonPathMatchers.hasJsonPath;
 
 @ExtendWith(StrimziExtension.class)
@@ -947,6 +950,30 @@ class KafkaST extends AbstractST {
         Job jobReadMessagesForTarget = waitForJobSuccess(readMessagesFromClusterJob(CLUSTER_NAME + "-target", nameConsumerTarget, topicName, messagesCount, userTarget, true));
         // Check consumed messages in target cluster
         checkRecordsForConsumer(messagesCount, jobReadMessagesForTarget);
+    }
+
+    @Test
+    @Tag(REGRESSION)
+    void testTriggeringRollingUpdateForKafka() {
+        resources().kafkaEphemeral(CLUSTER_NAME, 3).done();
+
+        // get pods for Kafka
+        Stream<Pod> podStream = client.pods().inNamespace(NAMESPACE).list().getItems().stream().filter(
+                p -> !p.getMetadata().getName().startsWith(CLUSTER_NAME + "kafka"));
+
+        // trigger Kafka rolling update
+        client.apps().statefulSets().inNamespace(NAMESPACE).withName("my-cluster-kafka").edit().editMetadata().addToAnnotations("strimzi.io/manual-rolling-update", "true").endMetadata().done();
+
+        // wait for pod deletion
+        podStream.forEach(
+            p -> waitForPodDeletion(NAMESPACE, p.getMetadata().getName())
+        );
+
+        // wait for Kafka redeployment
+        kubeClient.waitForStatefulSet(kafkaClusterName(CLUSTER_NAME), 3);
+
+        // Check that annotation was removed
+        assertFalse(client.apps().statefulSets().inNamespace(NAMESPACE).withName("my-cluster-kafka").get().getMetadata().getAnnotations().containsKey("strimzi.io/manual-rolling-update"));
     }
 
     @BeforeEach
