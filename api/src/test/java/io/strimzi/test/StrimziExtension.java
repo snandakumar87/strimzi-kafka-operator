@@ -88,7 +88,7 @@ public class StrimziExtension implements AfterAllCallback, BeforeAllCallback, Af
     public static final String REQUESTS_CPU = "200m";
     public static final String LIMITS_MEMORY = "512Mi";
     public static final String LIMITS_CPU = "1000m";
-    public static final String OPERATOR_LOG_LEVEL = "INFO";
+    public static final String OPERATOR_LOG_LEVEL = "DEBUG";
     private static final String DEFAULT_TAG = "";
     private static final String TAG_LIST_NAME = "junitTags";
     private static final String START_TIME = "start time";
