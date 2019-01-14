@@ -175,7 +175,7 @@ class SecurityST extends AbstractST {
     @Test
     @OpenShiftOnly
     void testAutoRenewCaCertsTriggeredByAnno() throws InterruptedException {
-        createCluster();
+        createClusterWithExternalRoute();
         String userName = "alice";
         resources().tlsUser(CLUSTER_NAME, userName).done();
         waitFor("", 1_000, TIMEOUT_FOR_GET_SECRETS, () -> client.secrets().inNamespace(NAMESPACE).withName("alice").get() != null,
@@ -259,7 +259,7 @@ class SecurityST extends AbstractST {
             });
     }
 
-    private void createCluster() {
+    private void createClusterWithExternalRoute() {
         LOGGER.info("Creating a cluster");
         resources().kafkaEphemeral(CLUSTER_NAME, 3)
                 .editSpec()
@@ -285,6 +285,49 @@ class SecurityST extends AbstractST {
                 .done();
     }
 
+    private void createClusterWithExternalLoadbalancer() {
+        LOGGER.info("Creating a cluster");
+        resources().kafkaEphemeral(CLUSTER_NAME, 3)
+                .editSpec()
+                    .editKafka()
+                        .editListeners()
+                            .withNewKafkaListenerExternalLoadBalancerExternal()
+                            .endKafkaListenerExternalLoadBalancerExternal()
+                        .endListeners()
+                        .withConfig(singletonMap("default.replication.factor", 3))
+                        .withNewPersistentClaimStorageStorage()
+                            .withSize("2Gi")
+                            .withDeleteClaim(true)
+                        .endPersistentClaimStorageStorage()
+                    .endKafka()
+                    .editZookeeper()
+                        .withReplicas(3)
+                        .withNewPersistentClaimStorageStorage()
+                            .withSize("2Gi")
+                            .withDeleteClaim(true)
+                        .endPersistentClaimStorageStorage()
+                    .endZookeeper()
+                .endSpec()
+                .done();
+    }
+
+    @Test
+    @OpenShiftOnly
+    void testLoadbalancer() throws InterruptedException {
+        createClusterWithExternalLoadbalancer();
+        String userName = "alice";
+        resources().tlsUser(CLUSTER_NAME, userName).done();
+        waitFor("", 1_000, TIMEOUT_FOR_GET_SECRETS, () -> client.secrets().inNamespace(NAMESPACE).withName("alice").get() != null,
+                () -> LOGGER.error("Couldn't find user secret {}", client.secrets().inNamespace(NAMESPACE).list().getItems()));
+
+        AvailabilityVerifier mp = waitForInitialAvailability(userName);
+
+        waitForAvailability(mp);
+
+        AvailabilityVerifier.Result result = mp.stop(TIMEOUT_FOR_SEND_RECEIVE_MSG);
+        LOGGER.info("Producer/consumer stats during cert renewal {}", result);
+    }
+
     @Test
     @OpenShiftOnly
     void testAutoRenewCaCertsTriggerByExpiredCertificate() throws InterruptedException {
@@ -295,7 +338,7 @@ class SecurityST extends AbstractST {
         String clientsCaCert = createSecret("clients-ca.crt", clientsCaCertificateSecretName(CLUSTER_NAME), "ca.crt");
 
         // 2. Now create a cluster
-        createCluster();
+        createClusterWithExternalRoute();
         String userName = "alice";
         resources().tlsUser(CLUSTER_NAME, userName).done();
         // Check if user exists
