@@ -318,7 +318,7 @@ class SecurityST extends AbstractST {
         String userName = "alice";
         resources().tlsUser(CLUSTER_NAME, userName).done();
         waitFor("", 1_000, TIMEOUT_FOR_GET_SECRETS, () -> client.secrets().inNamespace(NAMESPACE).withName("alice").get() != null,
-                () -> LOGGER.error("Couldn't find user secret {}", client.secrets().inNamespace(NAMESPACE).list().getItems()));
+            () -> LOGGER.error("Couldn't find user secret {}", client.secrets().inNamespace(NAMESPACE).list().getItems()));
 
         AvailabilityVerifier mp = waitForInitialAvailability(userName);
 
