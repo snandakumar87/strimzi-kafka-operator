@@ -13,6 +13,7 @@ import io.strimzi.test.extensions.StrimziExtension;
 import io.strimzi.test.TestUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,6 +64,8 @@ class ConnectST extends AbstractST {
             "internal.key.converter=org.apache.kafka.connect.json.JsonConverter\n" +
             "internal.value.converter.schemas.enable=false\n" +
             "internal.value.converter=org.apache.kafka.connect.json.JsonConverter\n");
+
+    private static Resources classResources;
 
     @Test
     @Tag(ACCEPTANCE)
@@ -257,9 +260,12 @@ class ConnectST extends AbstractST {
     }
 
     @BeforeAll
-    static void createClassResources() {
+    void setupEnvironment() {
         LOGGER.info("Creating resources before the test class");
-        applyRoleBindings(NAMESPACE);
+        createTestClassResources();
+
+        prepareEnvForOperator(NAMESPACE);
+        applyRoleBindings(NAMESPACE, NAMESPACE);
         // 050-Deployment
         testClassResources.clusterOperator(NAMESPACE).done();
 
@@ -274,5 +280,11 @@ class ConnectST extends AbstractST {
                     .withConfig(kafkaConfig)
                 .endKafka()
             .endSpec().done();
+    }
+
+    @AfterAll
+    void teardownEnvironment() {
+        testClassResources.deleteResources();
+        teardownEnvForOperator();
     }
 }
