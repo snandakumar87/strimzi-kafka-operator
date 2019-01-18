@@ -419,7 +419,7 @@ public abstract class AbstractST {
 
     /** Get the log of the pod with the given name */
     String podLog(String podName) {
-        return namespacedClient().pods().withName(podName).getLog();
+        return kubeClient.logs(podName);
     }
 
     String podLog(String podName, String containerId) {
@@ -436,11 +436,7 @@ public abstract class AbstractST {
     }
 
     String podNameWithLabels(Map<String, String> labels) {
-        List<Pod> pods = namespacedClient().pods().withLabels(labels).list().getItems();
-        if (pods.size() != 1) {
-            fail("There are " + pods.size() +  " pods with labels " + labels);
-        }
-        return pods.get(0).getMetadata().getName();
+        return kubeClient.getPodsByLabel(labels).get(0).getMetadata().getName();
     }
 
     /**
@@ -1026,11 +1022,8 @@ public abstract class AbstractST {
         }
     }
 
-    void waitForPodDeletion(String namespace, String name) {
-        LOGGER.info("Waiting when Pod {} will be deleted", name);
-
-        TestUtils.waitFor("statefulset " + name, GLOBAL_POLL_INTERVAL, GLOBAL_TIMEOUT,
-            () -> client.pods().inNamespace(namespace).withName(name).get() == null);
+    void waitForPodDeletion(String namespace, String podName) {
+        kubeClient.waitForPodDeletion(podName);
     }
 
     void waitForDeletion(long time, String namespace) throws Exception {

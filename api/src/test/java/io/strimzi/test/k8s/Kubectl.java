@@ -4,6 +4,11 @@
  */
 package io.strimzi.test.k8s;
 
+import io.fabric8.kubernetes.api.model.Pod;
+
+import java.util.List;
+import java.util.Map;
+
 /**
  * A {@link KubeClient} wrapping {@code kubectl}.
  */
@@ -17,6 +22,11 @@ public class Kubectl extends BaseKubeClient<Kubectl> {
     }
 
     @Override
+    public Kubectl deletePod(String podName) {
+        return null;
+    }
+
+    @Override
     protected String cmd() {
         return KUBECTL;
     }
@@ -24,5 +34,15 @@ public class Kubectl extends BaseKubeClient<Kubectl> {
     @Override
     public Kubectl clientWithAdmin() {
         return this;
+    }
+
+    @Override
+    public Kubectl waitForPodDeletion(String podName) {
+        return null;
+    }
+
+    @Override
+    public List<Pod> getPodsByLabel(Map<String, String> labels) {
+        return null;
     }
 }

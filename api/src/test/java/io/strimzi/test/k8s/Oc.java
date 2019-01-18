@@ -4,6 +4,10 @@
  */
 package io.strimzi.test.k8s;
 
+import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.openshift.client.DefaultOpenShiftClient;
+import io.fabric8.openshift.client.OpenShiftClient;
+import io.strimzi.test.TestUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -11,15 +15,19 @@ import java.util.List;
 import java.util.Map;
 
 import static java.util.Collections.emptyMap;
+import static org.junit.Assert.fail;
 
 /**
  * A {@link KubeClient} implementation wrapping {@code oc}.
  */
-public class Oc extends BaseKubeClient<Oc> {
+public class Oc<K extends Oc<K>> extends BaseKubeClient<Oc<K>> {
 
     private static final Logger LOGGER = LogManager.getLogger(Oc.class);
+    private final OpenShiftClient client = new DefaultOpenShiftClient();
 
     private static final String OC = "oc";
+    static final long GLOBAL_POLL_INTERVAL = 1000;
+    static final long GLOBAL_TIMEOUT = 300000;
 
     public Oc() {
 
@@ -76,6 +84,45 @@ public class Oc extends BaseKubeClient<Oc> {
     public Oc newProject(String name) {
         Exec.exec(namespacedCommand("new-project", name));
         return this;
+    }
+
+    @Override
+    public String logs(String podName, String containerName) {
+        if (containerName != null) {
+            return client.pods().withName(podName).getLog();
+        } else {
+            return client.pods().withName(podName).inContainer(containerName).getLog();
+        }
+    }
+
+    @Override
+    public K deletePod(String podName) {
+        client.pods().withName(podName).delete();
+        return (K) this;
+    }
+
+    @Override
+    public K waitForPod(String name) {
+        // TODO
+        return (K) this;
+    };
+
+    @Override
+    public K waitForPodDeletion(String podName) {
+        LOGGER.info("Waiting when Pod {} will be deleted", podName);
+
+        TestUtils.waitFor("pod " + podName + "will be deleted", GLOBAL_POLL_INTERVAL, GLOBAL_TIMEOUT,
+                () -> client.pods().withName(podName).get() == null);
+        return (K) this;
+    }
+
+    @Override
+    public List<Pod> getPodsByLabel(Map<String, String> labels) {
+        List<Pod> pods = client.pods().withLabels(labels).list().getItems();
+        if (pods.size() != 1) {
+            fail("There are " + pods.size() +  " pods with labels " + labels);
+        }
+        return pods;
     }
 
     @Override

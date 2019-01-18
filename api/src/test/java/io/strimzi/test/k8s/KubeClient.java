@@ -4,10 +4,13 @@
  */
 package io.strimzi.test.k8s;
 
+import io.fabric8.kubernetes.api.model.Pod;
+
 import java.io.File;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
@@ -37,6 +40,8 @@ public interface KubeClient<K extends KubeClient<K>> {
 
     /** Deletes the resources by resource name. */
     K deleteByName(String resourceType, String resourceName);
+
+    K deletePod(String podName);
 
     String namespace(String namespace);
 
@@ -135,6 +140,8 @@ public interface KubeClient<K extends KubeClient<K>> {
      */
     K waitForPod(String name);
 
+    K waitForPodDeletion(String podName);
+
     /**
      * Wait for the statefulset with the given {@code name} to have
      * currentReplicas == replicas, and if {@code waitForPods} is true
@@ -158,6 +165,8 @@ public interface KubeClient<K extends KubeClient<K>> {
      * @return The resource YAML.
      */
     String get(String resource, String resourceName);
+
+    List<Pod> getPodsByLabel(Map<String, String> labels);
 
     /**
      * Get a list of events in a given namespace
