@@ -59,7 +59,7 @@ class ConnectS2IST extends AbstractST {
         kubeClient.waitForDeploymentConfig(CONNECT_DEPLOYMENT_NAME);
 
         connectS2IPodName = kubeClient.listResourcesByLabel("pod", "type=kafka-connect-s2i").get(0);
-        String plugins = kubeClient.execInPod(connectS2IPodName, "curl", "-X", "GET", "http://localhost:8083/connector-plugins").out();
+        String plugins = kubeClient.execInPod(connectS2IPodName, "curl", "-X", "GET", "http://localhost:8083/connector-plugins");
 
         assertThat(plugins, containsString("io.debezium.connector.mongodb.MongoDbConnector"));
     }

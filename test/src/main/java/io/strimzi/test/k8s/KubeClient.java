@@ -93,7 +93,7 @@ public interface KubeClient<K extends KubeClient<K>> {
      * @param command The command
      * @return The process result.
      */
-    ProcessResult execInPod(String pod, String... command);
+    String execInPod(String pod, String... command);
 
     /**
      * Execute the given {@code command} in the given {@code container} which is deployed in {@code pod}.
@@ -102,7 +102,7 @@ public interface KubeClient<K extends KubeClient<K>> {
      * @param command The command
      * @return The process result.
      */
-    ProcessResult execInPodContainer(String pod, String container, String... command);
+    String execInPodContainer(String pod, String container, String... command);
 
     /**
      * Execute the given {@code command}.
@@ -170,8 +170,6 @@ public interface KubeClient<K extends KubeClient<K>> {
     List<String> list(String resourceType);
 
     String getResourceAsYaml(String resourceType, String resourceName);
-
-    String describe(String resourceType, String resourceName);
 
     default String logs(String pod) {
         return logs(pod, null);

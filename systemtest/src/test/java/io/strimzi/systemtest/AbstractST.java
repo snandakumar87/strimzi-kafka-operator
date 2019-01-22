@@ -203,7 +203,7 @@ public abstract class AbstractST {
         TestUtils.waitFor("kafka-broker-api-versions.sh success", GET_BROKER_API_INTERVAL, GET_BROKER_API_TIMEOUT, () -> {
             try {
                 String output = kubeClient.execInPod(podName,
-                        "/opt/kafka/bin/kafka-broker-api-versions.sh", "--bootstrap-server", "localhost:9092").out();
+                        "/opt/kafka/bin/kafka-broker-api-versions.sh", "--bootstrap-server", "localhost:9092");
                 versions.set(output);
                 return true;
             } catch (KubeClusterException e) {
@@ -224,7 +224,7 @@ public abstract class AbstractST {
             TestUtils.waitFor("mntr", pollMs, timeoutMs, () -> {
                 try {
                     String output = kubeClient.execInPod(zookeeperPod,
-                        "/bin/bash", "-c", "echo mntr | nc localhost " + zookeeperPort).out();
+                        "/bin/bash", "-c", "echo mntr | nc localhost " + zookeeperPort);
 
                     if (pattern.matcher(output).find()) {
                         return true;
@@ -237,7 +237,7 @@ public abstract class AbstractST {
                 () -> LOGGER.info("zookeeper `mntr` output at the point of timeout does not match {}:{}{}",
                     pattern.pattern(),
                     System.lineSeparator(),
-                    indent(kubeClient.execInPod(zookeeperPod, "/bin/bash", "-c", "echo mntr | nc localhost " + zookeeperPort).out()))
+                    indent(kubeClient.execInPod(zookeeperPod, "/bin/bash", "-c", "echo mntr | nc localhost " + zookeeperPort)))
             );
         }
     }
@@ -303,7 +303,7 @@ public abstract class AbstractST {
         String output = kubeClient.execInPod(kafkaPodName(clusterName, kafkaPodID), "/bin/bash", "-c",
                 "bin/kafka-verifiable-consumer.sh --broker-list " +
                         KafkaResources.plainBootstrapAddress(clusterName) + " --topic " + topic + " --group-id " + groupID + " & sleep "
-                        + timeout + "; kill %1").out();
+                        + timeout + "; kill %1");
         output = "[" + output.replaceAll("\n", ",") + "]";
         LOGGER.info("Output for kafka-verifiable-consumer.sh {}", output);
         return output;
@@ -349,10 +349,10 @@ public abstract class AbstractST {
 
     private List<List<String>> commandLines(String podName, String cmd) {
         List<List<String>> result = new ArrayList<>();
-        ProcessResult pr = kubeClient.execInPod(podName, "/bin/bash", "-c",
+        String output = kubeClient.execInPod(podName, "/bin/bash", "-c",
                 "for pid in $(ps -C java -o pid h); do cat /proc/$pid/cmdline; done"
         );
-        for (String cmdLine : pr.out().split("\n")) {
+        for (String cmdLine : output.split("\n")) {
             result.add(asList(cmdLine.split("\0")));
         }
         return result;
@@ -368,7 +368,7 @@ public abstract class AbstractST {
         String podName = zookeeperPodName(clusterName, zkPodId);
         int port = 2181 * 10 + zkPodId;
         return asList(kubeClient.execInPod(podName, "/bin/bash", "-c",
-                "bin/kafka-topics.sh --list --zookeeper localhost:" + port).out().split("\\s+"));
+                "bin/kafka-topics.sh --list --zookeeper localhost:" + port).split("\\s+"));
     }
 
     public String createTopicUsingPodCLI(String clusterName, int zkPodId, String topic, int replicationFactor, int partitions) {
@@ -376,28 +376,28 @@ public abstract class AbstractST {
         int port = 2181 * 10 + zkPodId;
         return kubeClient.execInPod(podName, "/bin/bash", "-c",
                 "bin/kafka-topics.sh --zookeeper localhost:" + port + " --create " + " --topic " + topic +
-                        " --replication-factor " + replicationFactor + " --partitions " + partitions).out();
+                        " --replication-factor " + replicationFactor + " --partitions " + partitions);
     }
 
     public String deleteTopicUsingPodCLI(String clusterName, int zkPodId, String topic) {
         String podName = zookeeperPodName(clusterName, zkPodId);
         int port = 2181 * 10 + zkPodId;
         return kubeClient.execInPod(podName, "/bin/bash", "-c",
-                "bin/kafka-topics.sh --zookeeper localhost:" + port + " --delete --topic " + topic).out();
+                "bin/kafka-topics.sh --zookeeper localhost:" + port + " --delete --topic " + topic);
     }
 
     public List<String>  describeTopicUsingPodCLI(String clusterName, int zkPodId, String topic) {
         String podName = zookeeperPodName(clusterName, zkPodId);
         int port = 2181 * 10 + zkPodId;
         return asList(kubeClient.execInPod(podName, "/bin/bash", "-c",
-                "bin/kafka-topics.sh --zookeeper localhost:" + port + " --describe --topic " + topic).out().split("\\s+"));
+                "bin/kafka-topics.sh --zookeeper localhost:" + port + " --describe --topic " + topic).split("\\s+"));
     }
 
     public String updateTopicPartitionsCountUsingPodCLI(String clusterName, int zkPodId, String topic, int partitions) {
         String podName = zookeeperPodName(clusterName, zkPodId);
         int port = 2181 * 10 + zkPodId;
         return kubeClient.execInPod(podName, "/bin/bash", "-c",
-                "bin/kafka-topics.sh --zookeeper localhost:" + port + " --alter --topic " + topic + " --partitions " + partitions).out();
+                "bin/kafka-topics.sh --zookeeper localhost:" + port + " --alter --topic " + topic + " --partitions " + partitions);
     }
 
     public Map<String, String> getImagesFromConfig() {

@@ -7,10 +7,16 @@ package io.strimzi.test.k8s;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
+import io.fabric8.kubernetes.client.DefaultKubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.dsl.ExecListener;
+import io.fabric8.kubernetes.client.dsl.ExecWatch;
 import io.strimzi.test.TestUtils;
+import okhttp3.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
@@ -22,6 +28,8 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Date;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -40,6 +48,7 @@ public abstract class BaseKubeClient<K extends BaseKubeClient<K>> implements Kub
     public static final String SERVICE = "service";
     public static final String CM = "cm";
     private String namespace = defaultNamespace();
+    private KubernetesClient client = new DefaultKubernetesClient();
 
     protected abstract String cmd();
 
@@ -213,24 +222,73 @@ public abstract class BaseKubeClient<K extends BaseKubeClient<K>> implements Kub
 
     @Override
     public K deleteNamespace(String name) {
-        try (Context context = adminContext()) {
-            Exec.exec(namespacedCommand(DELETE, "namespace", name));
-        }
+        client.namespaces().withName(name).delete();
+//        }
         return (K) this;
     }
 
     @Override
-    public ProcessResult execInPod(String pod, String... command) {
-        List<String> cmd = namespacedCommand("exec", pod, "--");
-        cmd.addAll(asList(command));
-        return Exec.exec(cmd);
+    public String execInPod(String podName, String... command) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        LOGGER.info("Running command on pod {}: {}", podName, command);
+        CompletableFuture<String> data = new CompletableFuture<>();
+        try (ExecWatch execWatch = client.pods().inNamespace(namespace)
+                .withName(podName)
+                .readingInput(null)
+                .writingOutput(baos)
+                .usingListener(new ExecListener() {
+                    @Override
+                    public void onOpen(Response response) {
+                        LOGGER.info("Reading data...");
+                    }
+
+                    @Override
+                    public void onFailure(Throwable throwable, Response response) {
+                        data.completeExceptionally(throwable);
+                    }
+
+                    @Override
+                    public void onClose(int i, String s) {
+                        data.complete(baos.toString());
+                    }
+                }).exec(command)) {
+            return data.get(1, TimeUnit.MINUTES);
+        } catch (Exception e) {
+            LOGGER.warn("Exception running command {} on pod: {}", command, e.getMessage());
+            return "";
+        }
     }
 
     @Override
-    public ProcessResult execInPodContainer(String pod, String container, String... command) {
-        List<String> cmd = namespacedCommand("exec", pod, "-c", container, "--");
-        cmd.addAll(asList(command));
-        return Exec.exec(cmd);
+    public String execInPodContainer(String podName, String container, String... command) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        LOGGER.info("Running command on pod {}: {}", podName, command);
+        CompletableFuture<String> data = new CompletableFuture<>();
+        try (ExecWatch execWatch = client.pods().inNamespace(namespace)
+                .withName(podName).inContainer(container)
+                .readingInput(null)
+                .writingOutput(baos)
+                .usingListener(new ExecListener() {
+                    @Override
+                    public void onOpen(Response response) {
+                        LOGGER.info("Reading data...");
+                    }
+
+                    @Override
+                    public void onFailure(Throwable throwable, Response response) {
+                        data.completeExceptionally(throwable);
+                    }
+
+                    @Override
+                    public void onClose(int i, String s) {
+                        data.complete(baos.toString());
+                    }
+                }).exec(command)) {
+            return data.get(1, TimeUnit.MINUTES);
+        } catch (Exception e) {
+            LOGGER.warn("Exception running command {} on pod: {}", command, e.getMessage());
+            return "";
+        }
     }
 
     @Override
@@ -395,19 +453,12 @@ public abstract class BaseKubeClient<K extends BaseKubeClient<K>> implements Kub
     }
 
     @Override
-    public String describe(String resourceType, String resourceName) {
-        return Exec.exec(namespacedCommand("describe", resourceType, resourceName)).out();
-    }
-
-    @Override
-    public String logs(String pod, String container) {
-        String[] args;
-        if (container != null) {
-            args = new String[]{"logs", pod, "-c", container};
+    public String logs(String podName, String containerName) {
+        if (containerName != null) {
+            return client.pods().withName(podName).inContainer(containerName).getLog();
         } else {
-            args = new String[]{"logs", pod};
+            return client.pods().withName(podName).getLog();
         }
-        return Exec.exec(namespacedCommand(args)).out();
     }
 
     @Override

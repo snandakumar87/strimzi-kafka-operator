@@ -77,7 +77,7 @@ class SecurityST extends AbstractST {
 
         String outputForKafkaBootstrap =
                 kubeClient.execInPodContainer(kafkaPodName(CLUSTER_NAME, 0), "kafka",
-                        "/bin/bash", "-c", commandForKafkaBootstrap).out();
+                        "/bin/bash", "-c", commandForKafkaBootstrap);
         checkKafkaCertificates(outputForKafkaBootstrap);
 
         String commandForZookeeperClient = "echo -n | openssl s_client -connect my-cluster-zookeeper-client:2181 -showcerts" +
@@ -87,7 +87,7 @@ class SecurityST extends AbstractST {
                 " -key /opt/kafka/broker-certs/my-cluster-kafka-0.key";
         String outputForZookeeperClient =
                 kubeClient.execInPodContainer(kafkaPodName(CLUSTER_NAME, 0), "kafka",
-                        "/bin/bash", "-c", commandForZookeeperClient).out();
+                        "/bin/bash", "-c", commandForZookeeperClient);
         checkZookeeperCertificates(outputForZookeeperClient);
 
         IntStream.rangeClosed(0, 1).forEach(podId -> {
@@ -95,9 +95,9 @@ class SecurityST extends AbstractST {
             String commandForKafkaPort9093 = "echo -n | " + generateOpenSSLCommandWithCAfile(kafkaPodName(CLUSTER_NAME, podId), "my-cluster-kafka-brokers", "9093");
 
             String outputForKafkaPort9091 =
-                    kubeClient.execInPodContainer(kafkaPodName(CLUSTER_NAME, podId), "kafka", "/bin/bash", "-c", commandForKafkaPort9091).out();
+                    kubeClient.execInPodContainer(kafkaPodName(CLUSTER_NAME, podId), "kafka", "/bin/bash", "-c", commandForKafkaPort9091);
             String outputForKafkaPort9093 =
-                    kubeClient.execInPodContainer(kafkaPodName(CLUSTER_NAME, podId), "kafka", "/bin/bash", "-c", commandForKafkaPort9093).out();
+                    kubeClient.execInPodContainer(kafkaPodName(CLUSTER_NAME, podId), "kafka", "/bin/bash", "-c", commandForKafkaPort9093);
 
             checkKafkaCertificates(outputForKafkaPort9091, outputForKafkaPort9093);
 
@@ -107,17 +107,17 @@ class SecurityST extends AbstractST {
 
             String outputForZookeeperPort2181 =
                     kubeClient.execInPodContainer(kafkaPodName(CLUSTER_NAME, podId), "kafka", "/bin/bash", "-c",
-                            commandForZookeeperPort2181).out();
+                            commandForZookeeperPort2181);
 
             String outputForZookeeperPort3888 =
                     kubeClient.execInPodContainer(kafkaPodName(CLUSTER_NAME, podId), "kafka", "/bin/bash", "-c",
-                            commandForZookeeperPort3888).out();
+                            commandForZookeeperPort3888);
             checkZookeeperCertificates(outputForZookeeperPort2181, outputForZookeeperPort3888);
 
             try {
                 String outputForZookeeperPort2888 =
                         kubeClient.execInPodContainer(kafkaPodName(CLUSTER_NAME, podId), "kafka", "/bin/bash", "-c",
-                                commandForZookeeperPort2888).out();
+                                commandForZookeeperPort2888);
                 checkZookeeperCertificates(outputForZookeeperPort2888);
             } catch (KubeClusterException e) {
                 if (e.result != null && e.result.exitStatus() == 104) {

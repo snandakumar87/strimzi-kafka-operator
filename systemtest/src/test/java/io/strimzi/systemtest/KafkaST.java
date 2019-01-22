@@ -701,10 +701,10 @@ class KafkaST extends AbstractST {
         String kafkaPodName = kafkaPodName(CLUSTER_NAME, 0);
         kubeClient.waitForPod(kafkaPodName);
 
-        String rackId = kubeClient.execInPodContainer(kafkaPodName, "kafka", "/bin/bash", "-c", "cat /opt/kafka/init/rack.id").out();
+        String rackId = kubeClient.execInPodContainer(kafkaPodName, "kafka", "/bin/bash", "-c", "cat /opt/kafka/init/rack.id");
         assertEquals("zone", rackId);
 
-        String brokerRack = kubeClient.execInPodContainer(kafkaPodName, "kafka", "/bin/bash", "-c", "cat /tmp/strimzi.properties | grep broker.rack").out();
+        String brokerRack = kubeClient.execInPodContainer(kafkaPodName, "kafka", "/bin/bash", "-c", "cat /tmp/strimzi.properties | grep broker.rack");
         assertTrue(brokerRack.contains("broker.rack=zone"));
 
         List<Event> events = getEvents("Pod", kafkaPodName);
