@@ -122,8 +122,8 @@ public class MockK8s implements K8s {
     }
 
     @Override
-    public void getFromTopicName(String topicName, Handler<AsyncResult<KafkaTopic>> handler) {
-        AsyncResult<KafkaTopic> resourceFuture = byName.get(topicName);
+    public void getFromName(String topicName, Handler<AsyncResult<KafkaTopic>> handler) {
+        AsyncResult<KafkaTopic> resourceFuture = byName.get(new ResourceName(topicName));
         handler.handle(resourceFuture != null ? resourceFuture : Future.succeededFuture());
     }
 
