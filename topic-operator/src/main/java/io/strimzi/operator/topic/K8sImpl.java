@@ -91,11 +91,34 @@ public class K8sImpl implements K8s {
         }, handler);
     }
 
-    @Override
+    /*@Override
     public void getFromName(ResourceName resourceName, Handler<AsyncResult<KafkaTopic>> handler) {
         vertx.executeBlocking(future -> {
             try {
                 future.complete(operation().inNamespace(namespace).withName(resourceName.toString()).get());
+            } catch (Exception e) {
+                future.fail(e);
+            }
+        }, handler);
+    }*/
+
+    @Override
+    public void getFromName(String topicName, Handler<AsyncResult<KafkaTopic>> handler) {
+        vertx.executeBlocking(future -> {
+            try {
+                // first look at topics specs, then look at their names
+                List<KafkaTopic> list = operation().inNamespace(namespace).withLabels(resourcePredicate.labels()).list().getItems();
+                LOGGER.debug("looking for k8s topic which contain " + topicName + " as spec.topicName.");
+                for (int i = 0; i < list.size(); i++) {
+                    LOGGER.debug("Comparing : " + list.get(i).getSpec().getTopicName() + " - " + topicName);
+                    if (list.get(i).getSpec().getTopicName() != null && list.get(i).getSpec().getTopicName().equals(topicName)) {
+                        LOGGER.debug("Found k8s topic " + topicName + " with spec.topicName " + list.get(i).getSpec().getTopicName());
+                        future.complete(list.get(i));
+                        return;
+                    }
+                }
+                LOGGER.debug("No k8s topic with spec.topicName==" + topicName + " found. Looking for k8s topic with name " + topicName);
+                future.complete(operation().inNamespace(namespace).withName(topicName).get());
             } catch (Exception e) {
                 future.fail(e);
             }

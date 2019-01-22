@@ -692,7 +692,7 @@ public class TopicOperator {
                 } else {
                     resourceName = topicName.asMapName();
                 }
-                k8s.getFromName(resourceName, kubeResult -> {
+                k8s.getFromName(resourceName.toString(), kubeResult -> {
                     if (kubeResult.succeeded()) {
                         KafkaTopic topic = kubeResult.result();
                         Topic k8sTopic = TopicSerialization.fromTopicResource(topic);
@@ -964,7 +964,7 @@ public class TopicOperator {
                     TopicName topicName = new TopicName(name);
                     Future topicFuture = Future.future();
                     topicFutures.add(topicFuture);
-                    k8s.getFromName(topicName.asMapName(), topicResult -> {
+                    k8s.getFromName(name, topicResult -> { // we cannot use topicName bc it changes upper case to lower one
                         if (topicResult.succeeded()) {
                             KafkaTopic kafkaTopic = topicResult.result();
                             reconcile(kafkaTopic, topicName).setHandler(topicFuture);
