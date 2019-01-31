@@ -8,6 +8,7 @@ import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watcher;
 import io.strimzi.api.kafka.model.KafkaTopic;
+import io.strimzi.operator.common.model.Labels;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import org.apache.logging.log4j.LogManager;
@@ -31,6 +32,11 @@ class K8sTopicWatcher implements Watcher<KafkaTopic> {
     public void eventReceived(Action action, KafkaTopic kafkaTopic) {
         ObjectMeta metadata = kafkaTopic.getMetadata();
         Map<String, String> labels = metadata.getLabels();
+        LOGGER.info("action " + action.name() + " with labels " + labels.toString());
+        labels.put(Labels.STRIMZI_TOPIC_LABEL, kafkaTopic.getSpec().getTopicName() == null
+                ? Integer.toString(kafkaTopic.getMetadata().getName().hashCode())
+                : Integer.toString(kafkaTopic.getSpec().getTopicName().hashCode()));
+
         if (resourcePredicate.test(kafkaTopic)) {
             String name = metadata.getName();
             String kind = kafkaTopic.getKind();
@@ -53,9 +59,11 @@ class K8sTopicWatcher implements Watcher<KafkaTopic> {
             };
             switch (action) {
                 case ADDED:
+                    LOGGER.info("creating topic with labels " + kafkaTopic.getMetadata().getLabels());
                     topicOperator.onResourceAdded(kafkaTopic, resultHandler);
                     break;
                 case MODIFIED:
+                    LOGGER.info("modifying topic with labels " + metadata.getLabels());
                     topicOperator.onResourceModified(kafkaTopic, resultHandler);
                     break;
                 case DELETED:

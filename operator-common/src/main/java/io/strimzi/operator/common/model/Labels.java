@@ -40,6 +40,11 @@ public class Labels {
     public static final String STRIMZI_CLUSTER_LABEL = STRIMZI_DOMAIN + "cluster";
 
     /**
+     * The hash code of the topic name
+     */
+    public static final String STRIMZI_TOPIC_LABEL = STRIMZI_DOMAIN + "topic.name";
+
+    /**
      * The name of the K8S resource.
      * This is often the same name as the cluster
      * (i.e. the same as {@code strimzi.io/cluster})

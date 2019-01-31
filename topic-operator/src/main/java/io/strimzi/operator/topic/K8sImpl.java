@@ -13,6 +13,7 @@ import io.strimzi.api.kafka.Crds;
 import io.strimzi.api.kafka.model.DoneableKafkaTopic;
 import io.strimzi.api.kafka.KafkaTopicList;
 import io.strimzi.api.kafka.model.KafkaTopic;
+import io.strimzi.operator.common.model.Labels;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -95,19 +96,29 @@ public class K8sImpl implements K8s {
     public void getFromName(String topicName, Handler<AsyncResult<KafkaTopic>> handler) {
         vertx.executeBlocking(future -> {
             try {
-                // first look at topics specs, then look at their names
                 List<KafkaTopic> list = operation().inNamespace(namespace).withLabels(resourcePredicate.labels()).list().getItems();
-                LOGGER.debug("looking for k8s topic with spec.topicName==" + topicName);
+                LOGGER.debug("Looking for k8s topic with " + Labels.STRIMZI_TOPIC_LABEL + "==" + topicName);
                 for (int i = 0; i < list.size(); i++) {
-                    LOGGER.debug("Comparing : " + list.get(i).getSpec().getTopicName() + " - " + topicName);
-                    if (list.get(i).getSpec().getTopicName() != null && list.get(i).getSpec().getTopicName().equals(topicName)) {
-                        LOGGER.debug("Found k8s topic " + list.get(i).getMetadata().getName() + " with spec.topicName==" + list.get(i).getSpec().getTopicName());
+                    // this may be reduced after we will be sure there is always a label set (putting it at the place every reconc)
+                    String kafkaTopicNameHash = list.get(i).getMetadata().getLabels().get(Labels.STRIMZI_TOPIC_LABEL);
+                    if (kafkaTopicNameHash == null) {
+                        LOGGER.debug("Label " + Labels.STRIMZI_TOPIC_LABEL + " not set. Looking for spec.topicName");
+                        // we are reconciling fresh topic which does not have set label yet
+                        kafkaTopicNameHash = Integer.toString(list.get(i).getSpec().getTopicName().hashCode());
+                    }
+                    if (kafkaTopicNameHash == null) {
+                        LOGGER.debug("Label " + Labels.STRIMZI_TOPIC_LABEL + " and spec.topicName not set. Looking for resource name");
+                        // use resource name whether the topicName is not set
+                        kafkaTopicNameHash = Integer.toString(list.get(i).getMetadata().getName().hashCode());
+                    }
+                    LOGGER.debug("Comparing: " + topicName.hashCode() + " - " + kafkaTopicNameHash + " (" + list.get(i).getMetadata().getName() + ")");
+                    if (Integer.toString(topicName.hashCode()).equals(kafkaTopicNameHash)) {
+                        LOGGER.debug("Found k8s topic " + list.get(i).getMetadata().getName() + " with " + Labels.STRIMZI_TOPIC_LABEL + "==" + kafkaTopicNameHash);
                         future.complete(list.get(i));
                         return;
                     }
                 }
-                LOGGER.debug("No k8s topic with spec.topicName==" + topicName + " found. Looking for k8s topic with name " + topicName);
-                future.complete(operation().inNamespace(namespace).withName(topicName).get());
+                future.fail("K8s topic with " + Labels.STRIMZI_TOPIC_LABEL + "==" + topicName + " not found");
             } catch (Exception e) {
                 future.fail(e);
             }

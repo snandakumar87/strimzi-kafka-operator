@@ -692,7 +692,13 @@ public class TopicOperator {
                 } else {
                     resourceName = topicName.asMapName();
                 }
-                k8s.getFromName(resourceName.toString(), kubeResult -> {
+                String name;
+                if (kafkaTopic == null) {
+                    name = resourceName.toString();
+                } else {
+                    name = kafkaTopic.getTopicName().toString();
+                }
+                k8s.getFromName(name, kubeResult -> {
                     if (kubeResult.succeeded()) {
                         KafkaTopic topic = kubeResult.result();
                         Topic k8sTopic = TopicSerialization.fromTopicResource(topic);
@@ -789,6 +795,7 @@ public class TopicOperator {
             final Topic k8sTopic;
             try {
                 k8sTopic = TopicSerialization.fromTopicResource(modifiedTopic);
+                LOGGER.info("onResourceModified modified " + modifiedTopic.getMetadata().getLabels() + " k8s " + k8sTopic.getMetadata().getLabels());
             } catch (InvalidTopicException e) {
                 resultHandler.handle(Future.failedFuture(e));
                 return;
@@ -819,6 +826,7 @@ public class TopicOperator {
                 if (privateTopic == null && isModify) {
                     enqueue(new Event(topicResource, "Kafka topics cannot be renamed, but KafkaTopic's spec.topicName has changed.", EventType.WARNING, handler));
                 } else {
+                    LOGGER.info("topic added, reconciling " + topicName.toString() + " " + topicResource.getMetadata().getLabels());
                     reconcile(topicResource, k8sTopic, kafkaTopic, privateTopic, handler);
                 }
             } else {
