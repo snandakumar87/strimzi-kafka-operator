@@ -79,7 +79,7 @@ class RecoveryST extends AbstractST {
         KUBE_CLIENT.waitForResourceDeletion(STATEFUL_SET, zookeeperStatefulSetName);
 
         LOGGER.info("Waiting for recovery {}", zookeeperStatefulSetName);
-        KUBE_CLIENT.waitForStatefulSet(zookeeperStatefulSetName, 1);
+        KUBE_CLIENT.waitForStatefulSet(zookeeperStatefulSetName, 3);
 
         TimeMeasuringSystem.stopOperation(operationID);
         //Test that CO doesn't have any exceptions in log
@@ -175,7 +175,7 @@ class RecoveryST extends AbstractST {
 
     @Test
     void testRecoveryFromZookeeperMetricsConfigDeletion() {
-        operationID = startTimeMeasuring(Operation.TEST_EXECUTION);
+        operationID = startTimeMeasuring(Operation.CLUSTER_RECOVERY);
         // kafka cluster already deployed
         String zookeeperMetricsConfigName = zookeeperMetricsConfigName(CLUSTER_NAME);
         LOGGER.info("Running deleteZookeeperMetricsConfig with cluster {}", CLUSTER_NAME);
